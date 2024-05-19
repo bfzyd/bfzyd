@@ -23,10 +23,10 @@
 hostname = burning.wo-adv.cn
 
 [rewrite_local]
-^https:\/\/burning\.wo-adv\.cn\/integral\/queryTemlateList\.do url script-request-header https://raw.githubusercontent.com/WowYiJiu/Personal/main/Script/burning.js
+^https:\/\/burning\.wo-adv\.cn\/integral\/queryTemlateList\.do url script-request-header https://raw.githubusercontent.com/bfzyd/bfzyd/master/Quantumult-X/%E8%B6%85%E7%84%B6%E6%B1%87%E7%AD%BE%E5%88%B0%E8%84%9A%E6%9C%AC.js
 
 [task_local]
-20 7 * * * https://raw.githubusercontent.com/WowYiJiu/Personal/main/Script/burning.js, tag=超燃汇, img-url=https://raw.githubusercontent.com/WowYiJiu/Personal/main/icon/burning.png, enabled=true
+20 7 * * * https://raw.githubusercontent.com/bfzyd/bfzyd/master/Quantumult-X/%E8%B6%85%E7%84%B6%E6%B1%87%E7%AD%BE%E5%88%B0%E8%84%9A%E6%9C%AC.js, tag=超燃汇, img-url=https://raw.githubusercontent.com/WowYiJiu/Personal/main/icon/burning.png, enabled=true
 ====================================================================================================
 */
 const $ = new Env('超燃汇');
