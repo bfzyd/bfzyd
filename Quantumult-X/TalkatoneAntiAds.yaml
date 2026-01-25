@@ -1,6 +1,5 @@
 # > Talkatone 去广告规则
 payload:
-  - DOMAIN-KEYWORD,googleads
   - DOMAIN-SUFFIX,ads.inmobi.com
   - DOMAIN-SUFFIX,adsappier.com
   - DOMAIN-SUFFIX,amazon-adsystem.com
