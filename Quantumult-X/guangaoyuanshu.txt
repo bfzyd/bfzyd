@@ -22,28 +22,3 @@ jm-comic2.club##div.col-xs-6 > .e8c78e-4_b [href]
 jm-comic2.club##.speed_btn.btn-primary.btn.center.visible-sm.visible-xs
 18comic.vip###a35c7-1_4_RotateIt
 18comic.vip##.a35c7-1_4_sticky2 > .a35c7-1_4
-
-5klsjs88.dtnuaic6.work###app > article.start > div.start_ad:first-child > div.adbox:first-child > div.ad-img.ad > div.van-image.b_img
-5klsjs88.dtnuaic6.work###app > article.start > div.start_ad:first-child > div.adbox:nth-child(2) > div.ad-img.ad > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###app > article.start > div.start_ad:first-child > div.adbox:last-child > div.ad-img.ad > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###app > div.van-overlay:nth-child(2) > main.ann > div.info
-5klsjs88.dtnuaic6.work###app > div.van-overlay:nth-child(2) > main.ann
-5klsjs88.dtnuaic6.work###app > div.van-overlay:nth-child(2)
-5klsjs88.dtnuaic6.work###app > article.tabbarad:nth-child(3)
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.special-marquee:nth-child(2)
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(3) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(6) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(2) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(6) > div.aditem > div.ad-img > div.van-image.b_img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(2) > div.aditem > div.ad-img > div.van-image.b_img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(4) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(10) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.banner:first-child > div.van-swipe > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(4) > div.aditem > div.ad-img > div.van-image.b_img
-5klsjs88.dtnuaic6.work###van-tab-5 > div.van-tab__panel > div.van-pull-refresh:last-child > div.van-pull-refresh__track > div.van-list:last-child > div.featured-content:first-child > div.list > div.sta:last-child > div.inset-ad:last-child
-5klsjs88.dtnuaic6.work###van-tab-8 > div.van-tab__panel > div.special-marquee:nth-child(3)
-5klsjs88.dtnuaic6.work###van-tab-7 > div.van-tab__panel > div.special-marquee:nth-child(3)
-5klsjs88.dtnuaic6.work###van-tab-6 > div.van-tab__panel > div.special-marquee:nth-child(2)
-5klsjs88.dtnuaic6.work###app > article.page.vvvvvv:first-child > article.page:last-child > section:last-child > div.box-container:last-child > div.item:last-child > div.icon > img
-5klsjs88.dtnuaic6.work###app > article.page.vvvvvv:first-child > article.page:last-child > section:last-child > div.banner:nth-child(3) > div.van-swipe:first-child > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(14) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
-5klsjs88.dtnuaic6.work###app > article.page.vvvvvv:first-child > article.page:last-child > section:last-child > div.banner:nth-child(3) > div.ad_name:last-child
-5klsjs88.dtnuaic6.work###app > article.page.vvvvvv:first-child > article.page:last-child > section:last-child > div.banner:nth-child(3) > div.van-swipe:first-child > div.van-swipe__track:first-child > div.van-swipe-item:nth-child(28) > div.aditem > div.ad-img > div.van-image.b_img > img.van-image__img
