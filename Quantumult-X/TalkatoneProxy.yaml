@@ -1,7 +1,10 @@
 # > Talkatone 全局规则必须高质量干净节点
 payload:
+  - DOMAIN-WILDCARD,*-sjc-*.tktn.be
   - DOMAIN-SUFFIX,tktn.at
   - DOMAIN-SUFFIX,tktn.be
+  - DOMAIN-SUFFIX,vm.talkatone.com
+  - DOMAIN-SUFFIX,tenor.com
   - DOMAIN-SUFFIX,agkn.com
   - DOMAIN-SUFFIX,cohere.com
   - DOMAIN-SUFFIX,crashlytics.com
