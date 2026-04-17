@@ -4,6 +4,11 @@
 //   PANEL_PASSWORD    - 面板登录密码（必填）
 //   TGTOKEN           - Telegram Bot Token（可选）
 //   TGID              - Telegram Chat ID（可选）
+//
+// 增强功能：
+//   - 支持自定义请求头（如 New-Api-User）
+//   - 支持自定义接口路径（paths.login / checkin / userInfo）
+//   - 更健壮的登录认证（兼容 Cookie 与 Token，form 模式也能解析 JSON）
 // =========================================================================
 
 export default {
@@ -77,35 +82,38 @@ async function checkinSingleSite(site, sharedLogs = null) {
   const baseUrl = site.url.replace(/\/$/, "");
   const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+  // 支持自定义路径
   const paths = {
     login: site.paths?.login || "/api/user/login",
     checkin: site.paths?.checkin || "/api/user/checkin",
     userInfo: site.paths?.userInfo || "/api/user/self"
   };
 
+  // 支持自定义请求头（例如 New-Api-User）
+  const customHeaders = site.headers || {};
+
   const balanceField = site.balanceField || "data.money";
   const verifyByBalanceChange = site.verifyByBalanceChange !== false;
   const loginType = site.loginType || "json"; // "json" 或 "form"
 
-  // 构建登录请求
-  let loginBody, loginHeaders;
+  // 构建登录请求体与基础头
+  let loginBody;
+  let loginHeaders = {
+    "User-Agent": UA,
+    ...customHeaders,  // 合并自定义头部
+  };
+
   if (loginType === "form") {
     const params = new URLSearchParams();
     params.append("username", site.username);
     params.append("password", site.password);
     loginBody = params.toString();
-    loginHeaders = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": UA,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    };
+    loginHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+    loginHeaders["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
   } else {
     loginBody = JSON.stringify({ username: site.username, password: site.password });
-    loginHeaders = {
-      "Content-Type": "application/json",
-      "User-Agent": UA,
-      "Accept": "application/json",
-    };
+    loginHeaders["Content-Type"] = "application/json";
+    loginHeaders["Accept"] = "application/json";
   }
 
   try {
@@ -124,41 +132,54 @@ async function checkinSingleSite(site, sharedLogs = null) {
     if (setCookie) auth.cookie = setCookie;
 
     const loginText = await loginRes.text();
-    let loginData = null;
-    let isJson = false;
 
+    // ========== 增强型登录成功判定（兼容 Cookie / Token / form / json）==========
+    let loginSuccess = false;
+
+    // 1. 有 Cookie 即视为成功的一部分
+    if (auth.cookie) {
+      loginSuccess = true;
+      log(`✅ 登录成功（获取到 Cookie）`);
+    }
+
+    // 2. 尝试解析 JSON 响应体（无论 loginType，都可能包含 token）
+    let loginJson = null;
     try {
-      loginData = JSON.parse(loginText);
-      isJson = true;
+      loginJson = JSON.parse(loginText);
     } catch {
-      isJson = false;
+      // 非 JSON，忽略
     }
 
-    // 判断登录成功
-    if (loginType === "form") {
-      if ((loginRes.status === 302 || loginRes.status === 200) && auth.cookie) {
-        log(`✅ 登录成功（通过 Cookie）`);
-      } else {
-        throw new Error(`登录失败 HTTP ${loginRes.status}，无有效 Cookie`);
-      }
-    } else {
-      if (!loginRes.ok) {
-        const msg = isJson ? (loginData.message || loginData.error) : `HTTP ${loginRes.status}`;
-        throw new Error(`登录失败: ${msg}`);
-      }
-      if (!isJson) {
-        log(`⚠️ 登录响应非 JSON，前100字符: ${loginText.substring(0, 100)}`);
-        if (!auth.cookie) throw new Error("登录响应非 JSON 且无 Cookie");
-      } else {
-        auth.token = loginData.data?.token || loginData.token || loginData.access_token || loginData.api_key || "";
-        log(auth.token ? "✅ 登录成功，获取到 Token" : "✅ 登录成功（无 Token，使用 Cookie）");
+    // 3. 提取 Token（支持多种字段名）
+    if (loginJson) {
+      const possibleToken = loginJson.data?.token
+                         || loginJson.token
+                         || loginJson.access_token
+                         || loginJson.api_key;
+      if (possibleToken) {
+        auth.token = possibleToken;
+        if (!loginSuccess) loginSuccess = true;
+        log(auth.cookie ? "✅ 同时获取到 Cookie 与 Token" : "✅ 登录成功（提取到 Token）");
       }
     }
+
+    // 4. 最终兜底：HTTP 状态码为 2xx/3xx 且至少有一种认证凭据
+    if (!loginSuccess && (loginRes.status >= 200 && loginRes.status < 400) && (auth.cookie || auth.token)) {
+      loginSuccess = true;
+      log(`✅ 登录成功（HTTP ${loginRes.status}）`);
+    }
+
+    // 5. 若仍失败，抛出详细错误
+    if (!loginSuccess) {
+      const debugMsg = loginJson ? JSON.stringify(loginJson).substring(0, 200) : loginText.substring(0, 200);
+      throw new Error(`登录失败 HTTP ${loginRes.status}，无有效认证凭据。响应片段: ${debugMsg}`);
+    }
+    // ========== 登录判定结束 ==========
 
     // 获取签到前余额
     let balanceBefore = null;
     try {
-      const beforeData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA);
+      const beforeData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA, customHeaders);
       balanceBefore = getValueByPath(beforeData, balanceField);
       log(`💰 签到前余额: ${balanceBefore ?? "未知"}`);
     } catch (e) {
@@ -169,7 +190,7 @@ async function checkinSingleSite(site, sharedLogs = null) {
     log(`📝 签到中 (${paths.checkin})`);
     const checkinRes = await fetch(`${baseUrl}${paths.checkin}`, {
       method: "POST",
-      headers: buildHeaders(auth, UA),
+      headers: buildHeaders(auth, UA, customHeaders),
     });
 
     const checkinText = await checkinRes.text();
@@ -197,7 +218,7 @@ async function checkinSingleSite(site, sharedLogs = null) {
     // 获取签到后余额
     let balanceAfter = null;
     try {
-      const afterData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA);
+      const afterData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA, customHeaders);
       balanceAfter = getValueByPath(afterData, balanceField);
       log(`💰 签到后余额: ${balanceAfter ?? "未知"}`);
     } catch (e) {
@@ -229,11 +250,12 @@ async function checkinSingleSite(site, sharedLogs = null) {
   }
 }
 
-// 构建请求头（优先 Token，无则 Cookie）
-function buildHeaders(auth, ua) {
+// 构建请求头（优先 Token，无则 Cookie，并合并自定义头部）
+function buildHeaders(auth, ua, customHeaders = {}) {
   const headers = {
     "User-Agent": ua,
     "Accept": "application/json",
+    ...customHeaders,   // 合并账号级自定义头部
   };
   if (auth.token) {
     headers["Authorization"] = `Bearer ${auth.token}`;
@@ -244,9 +266,9 @@ function buildHeaders(auth, ua) {
 }
 
 // 发送带认证的 GET 请求
-async function authenticatedFetch(url, auth, ua) {
+async function authenticatedFetch(url, auth, ua, customHeaders = {}) {
   const res = await fetch(url, {
-    headers: buildHeaders(auth, ua),
+    headers: buildHeaders(auth, ua, customHeaders),
   });
   if (!res.ok) {
     const text = await res.text();
