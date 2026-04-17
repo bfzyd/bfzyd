@@ -1,0 +1,17 @@
+# wrangler.toml
+name = "newapi-auto-checkin"          # Worker 名称（可自定义）
+main = "ljqd/worker.js"               # 入口文件相对于仓库根目录的路径
+compatibility_date = "2025-01-01"     # 兼容性日期（使用当前或未来日期）
+compatibility_flags = ["nodejs_compat"] # 开启 Node.js 兼容模式（可选）
+
+# 观察模式（可选）
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# 普通环境变量（非敏感，可公开的值可以放这里）
+[vars]
+# 示例：SITE_NAME = "MyNewAPI"
+
+# 敏感信息（如账号密码、Token）不应写在这里，
+# 而应通过 `wrangler secret put` 命令或 GitHub Actions Secrets 注入。
