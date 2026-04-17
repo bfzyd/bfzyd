@@ -20,6 +20,7 @@ export default {
       return handleApiRequest(request, env, url.pathname);
     }
 
+    // 直接通过密码路径触发签到（用于无面板调试）
     if (env.PANEL_PASSWORD && url.pathname === `/${env.PANEL_PASSWORD}`) {
       const result = await runAllCheckins(env);
       return new Response(result.summary, {
@@ -43,7 +44,7 @@ export default {
   },
 };
 
-// ========== 核心签到逻辑（硬编码 NewAPI 规范）==========
+// ========== 核心签到逻辑 ==========
 async function runAllCheckins(env) {
   const accounts = parseAccounts(env);
   if (typeof accounts === "string") {
@@ -77,9 +78,13 @@ async function checkinSingleSite(site, sharedLogs = null) {
   const baseUrl = site.url.replace(/\/$/, "");
   const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  const loginPath = "/api/user/login";
-  const checkinPath = "/api/user/checkin";
-  const userInfoPath = "/api/user/self";
+  // ===== 支持自定义路径 =====
+  const paths = {
+    login: site.paths?.login || "/api/user/login",
+    checkin: site.paths?.checkin || "/api/user/checkin",
+    userInfo: site.paths?.userInfo || "/api/user/self"
+  };
+
   const balanceField = site.balanceField || "data.money";
   const verifyByBalanceChange = site.verifyByBalanceChange !== false;
 
@@ -89,10 +94,10 @@ async function checkinSingleSite(site, sharedLogs = null) {
   };
 
   try {
-    let cookie = "";
+    const auth = { cookie: "", token: "" };
 
-    log(`🔐 登录中`);
-    const loginRes = await fetch(`${baseUrl}${loginPath}`, {
+    log(`🔐 登录中 (${paths.login})`);
+    const loginRes = await fetch(`${baseUrl}${paths.login}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -102,79 +107,92 @@ async function checkinSingleSite(site, sharedLogs = null) {
       body: JSON.stringify(loginBody),
     });
 
-    const newCookie = loginRes.headers.get("set-cookie");
-    if (newCookie) cookie = newCookie;
+    // 提取 Cookie
+    const setCookie = loginRes.headers.get("set-cookie");
+    if (setCookie) auth.cookie = setCookie;
+
+    // 读取登录响应
+    let loginData;
+    try {
+      loginData = await loginRes.json();
+    } catch {
+      const text = await loginRes.text();
+      throw new Error(`登录响应非 JSON: ${text.substring(0, 100)}`);
+    }
 
     if (!loginRes.ok) {
-      throw new Error(`登录失败 HTTP ${loginRes.status}`);
+      const msg = loginData.message || loginData.error || `HTTP ${loginRes.status}`;
+      throw new Error(`登录失败: ${msg}`);
     }
 
-    const loginData = await loginRes.json();
-    if (!loginData.success) {
-      throw new Error(`登录失败: ${loginData.message || "未知错误"}`);
+    // 提取 Token（兼容不同字段名）
+    auth.token = loginData.data?.token || loginData.token || loginData.access_token || loginData.api_key || "";
+    if (auth.token) {
+      log(`✅ 登录成功，获取到 Token`);
+    } else {
+      log(`✅ 登录成功（无 Token，将使用 Cookie 认证）`);
     }
-    log("✅ 登录成功");
 
+    // 获取签到前余额
     let balanceBefore = null;
     try {
-      const beforeRes = await fetch(`${baseUrl}${userInfoPath}`, {
-        headers: { "Cookie": cookie, "User-Agent": UA, "Accept": "application/json" },
-      });
-      if (beforeRes.ok) {
-        const beforeData = await beforeRes.json();
-        balanceBefore = getValueByPath(beforeData, balanceField);
-        log(`💰 签到前余额: ${balanceBefore}`);
-      }
+      const beforeData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA);
+      balanceBefore = getValueByPath(beforeData, balanceField);
+      log(`💰 签到前余额: ${balanceBefore ?? "未知"}`);
     } catch (e) {
       log(`⚠️ 获取签到前余额失败: ${e.message}`);
     }
 
-    log(`📝 签到中`);
-    const checkinRes = await fetch(`${baseUrl}${checkinPath}`, {
+    // 执行签到
+    log(`📝 签到中 (${paths.checkin})`);
+    const checkinRes = await fetch(`${baseUrl}${paths.checkin}`, {
       method: "POST",
-      headers: {
-        "Cookie": cookie,
-        "User-Agent": UA,
-        "Accept": "application/json",
-      },
+      headers: buildHeaders(auth, UA),
     });
 
-    if (!checkinRes.ok) {
-      throw new Error(`签到请求失败 HTTP ${checkinRes.status}`);
+    let checkinData;
+    try {
+      checkinData = await checkinRes.json();
+    } catch {
+      const text = await checkinRes.text();
+      throw new Error(`签到响应非 JSON: ${text.substring(0, 100)}`);
     }
 
-    const checkinData = await checkinRes.json();
+    if (!checkinRes.ok) {
+      const msg = checkinData.message || checkinData.error || `HTTP ${checkinRes.status}`;
+      throw new Error(`签到请求失败: ${msg}`);
+    }
+
     const checkinMsg = checkinData.message || (checkinData.success ? "签到成功" : "签到失败");
     let checkinSuccess = checkinData.success === true;
+    const reward = checkinData.data?.reward || checkinData.reward || 0;
 
+    // 获取签到后余额
     let balanceAfter = null;
     try {
-      const afterRes = await fetch(`${baseUrl}${userInfoPath}`, {
-        headers: { "Cookie": cookie, "User-Agent": UA, "Accept": "application/json" },
-      });
-      if (afterRes.ok) {
-        const afterData = await afterRes.json();
-        balanceAfter = getValueByPath(afterData, balanceField);
-        log(`💰 签到后余额: ${balanceAfter}`);
-      }
+      const afterData = await authenticatedFetch(`${baseUrl}${paths.userInfo}`, auth, UA);
+      balanceAfter = getValueByPath(afterData, balanceField);
+      log(`💰 签到后余额: ${balanceAfter ?? "未知"}`);
     } catch (e) {
       log(`⚠️ 获取签到后余额失败: ${e.message}`);
     }
 
+    // 余额变化验证
     if (verifyByBalanceChange && balanceBefore !== null && balanceAfter !== null) {
       if (balanceAfter > balanceBefore) {
-        const gain = (balanceAfter - balanceBefore).toFixed(2);
+        const gain = (balanceAfter - balanceBefore).toFixed(4);
         log(`📈 余额增加 ${gain}，确认签到成功`);
         checkinSuccess = true;
       } else if (balanceAfter === balanceBefore) {
         log(`⚠️ 余额未变化，可能今日已签到`);
-        checkinSuccess = false;
+        checkinSuccess = checkinData.success || false;
       }
     }
 
-    const finalMsg = checkinSuccess
-      ? `✅ ${checkinMsg} | 余额: ${balanceAfter ?? "未知"}`
-      : `❌ ${checkinMsg} | 余额: ${balanceAfter ?? "未知"}`;
+    let finalMsg = checkinSuccess ? "✅ " : "❌ ";
+    finalMsg += checkinMsg;
+    if (reward > 0) finalMsg += ` | 获得 ${reward}`;
+    finalMsg += ` | 余额: ${balanceAfter ?? "未知"}`;
 
     log(finalMsg);
     return {
@@ -186,6 +204,32 @@ async function checkinSingleSite(site, sharedLogs = null) {
     log(`❌ ${error.message}`);
     return { name: site.name || site.url, success: false, message: error.message };
   }
+}
+
+// 辅助函数：构建请求头（优先 Token，无则 Cookie）
+function buildHeaders(auth, ua) {
+  const headers = {
+    "User-Agent": ua,
+    "Accept": "application/json",
+  };
+  if (auth.token) {
+    headers["Authorization"] = `Bearer ${auth.token}`;
+  } else if (auth.cookie) {
+    headers["Cookie"] = auth.cookie;
+  }
+  return headers;
+}
+
+// 辅助函数：发送带认证的 GET 请求
+async function authenticatedFetch(url, auth, ua) {
+  const res = await fetch(url, {
+    headers: buildHeaders(auth, ua),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`请求失败 ${res.status}: ${text.substring(0, 100)}`);
+  }
+  return res.json();
 }
 
 function getValueByPath(obj, path) {
@@ -212,6 +256,7 @@ async function sendTelegram(env, message) {
   if (token) {
     apiUrl = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&parse_mode=HTML&text=${encoded}`;
   } else {
+    // 备用代理
     apiUrl = `https://api.tg.090227.xyz/sendMessage?chat_id=${chatId}&parse_mode=HTML&text=${encoded}`;
   }
 
@@ -222,6 +267,7 @@ async function sendTelegram(env, message) {
   }
 }
 
+// ========== API 路由处理 ==========
 async function handleApiRequest(request, env, pathname) {
   if (pathname !== "/api/login" && !(await verifyAuth(request, env))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -330,6 +376,7 @@ function maskEmail(email) {
   return local[0] + "*".repeat(local.length - 2) + local[local.length - 1] + "@" + domain;
 }
 
+// ========== HTML 模板 ==========
 function getHtmlTemplate() {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
