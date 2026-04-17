@@ -15,3 +15,4 @@ head_sampling_rate = 1
 
 # 敏感信息（如账号密码、Token）不应写在这里，
 # 而应通过 `wrangler secret put` 命令或 GitHub Actions Secrets 注入。
+# trigger rebuild
