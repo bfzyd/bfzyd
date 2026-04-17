@@ -1,5 +1,5 @@
 # wrangler.toml
-name = "newapi-auto-checkin"          # Worker 名称（可自定义）
+name = "newapi"          # Worker 名称（可自定义）
 main = "ljqd/worker.js"               # 入口文件相对于仓库根目录的路径
 compatibility_date = "2025-01-01"     # 兼容性日期（使用当前或未来日期）
 compatibility_flags = ["nodejs_compat"] # 开启 Node.js 兼容模式（可选）
