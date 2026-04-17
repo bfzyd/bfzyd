@@ -85,49 +85,74 @@ async function checkinSingleSite(site, sharedLogs = null) {
 
   const balanceField = site.balanceField || "data.money";
   const verifyByBalanceChange = site.verifyByBalanceChange !== false;
+  const loginType = site.loginType || "json"; // "json" 或 "form"
 
-  const loginBody = {
-    username: site.username,
-    password: site.password,
-  };
+  // 构建登录请求
+  let loginBody, loginHeaders;
+  if (loginType === "form") {
+    const params = new URLSearchParams();
+    params.append("username", site.username);
+    params.append("password", site.password);
+    loginBody = params.toString();
+    loginHeaders = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    };
+  } else {
+    loginBody = JSON.stringify({ username: site.username, password: site.password });
+    loginHeaders = {
+      "Content-Type": "application/json",
+      "User-Agent": UA,
+      "Accept": "application/json",
+    };
+  }
 
   try {
     const auth = { cookie: "", token: "" };
 
-    log(`🔐 登录中 (${paths.login})`);
+    log(`🔐 登录中 (${paths.login}, 类型: ${loginType})`);
     const loginRes = await fetch(`${baseUrl}${paths.login}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": UA,
-        "Accept": "application/json",
-      },
-      body: JSON.stringify(loginBody),
+      headers: loginHeaders,
+      body: loginBody,
+      redirect: "manual", // 不自动跟随，便于捕获 Cookie
     });
 
-    // 提取 Cookie
+    // 提取 Cookie（包括重定向中的 Set-Cookie）
     const setCookie = loginRes.headers.get("set-cookie");
     if (setCookie) auth.cookie = setCookie;
 
-    // 安全读取响应体：先获取文本，再尝试解析 JSON
     const loginText = await loginRes.text();
-    let loginData;
+    let loginData = null;
+    let isJson = false;
+
     try {
       loginData = JSON.parse(loginText);
+      isJson = true;
     } catch {
-      throw new Error(`登录响应非 JSON: ${loginText.substring(0, 100)}`);
+      isJson = false;
     }
 
-    if (!loginRes.ok) {
-      const msg = loginData.message || loginData.error || `HTTP ${loginRes.status}`;
-      throw new Error(`登录失败: ${msg}`);
-    }
-
-    auth.token = loginData.data?.token || loginData.token || loginData.access_token || loginData.api_key || "";
-    if (auth.token) {
-      log(`✅ 登录成功，获取到 Token`);
+    // 判断登录成功
+    if (loginType === "form") {
+      if ((loginRes.status === 302 || loginRes.status === 200) && auth.cookie) {
+        log(`✅ 登录成功（通过 Cookie）`);
+      } else {
+        throw new Error(`登录失败 HTTP ${loginRes.status}，无有效 Cookie`);
+      }
     } else {
-      log(`✅ 登录成功（无 Token，将使用 Cookie 认证）`);
+      if (!loginRes.ok) {
+        const msg = isJson ? (loginData.message || loginData.error) : `HTTP ${loginRes.status}`;
+        throw new Error(`登录失败: ${msg}`);
+      }
+      if (!isJson) {
+        log(`⚠️ 登录响应非 JSON，前100字符: ${loginText.substring(0, 100)}`);
+        if (!auth.cookie) throw new Error("登录响应非 JSON 且无 Cookie");
+      } else {
+        auth.token = loginData.data?.token || loginData.token || loginData.access_token || loginData.api_key || "";
+        log(auth.token ? "✅ 登录成功，获取到 Token" : "✅ 登录成功（无 Token，使用 Cookie）");
+      }
     }
 
     // 获取签到前余额
@@ -147,13 +172,17 @@ async function checkinSingleSite(site, sharedLogs = null) {
       headers: buildHeaders(auth, UA),
     });
 
-    // 安全读取签到响应体
     const checkinText = await checkinRes.text();
     let checkinData;
     try {
       checkinData = JSON.parse(checkinText);
     } catch {
-      throw new Error(`签到响应非 JSON: ${checkinText.substring(0, 100)}`);
+      log(`⚠️ 签到响应非 JSON: ${checkinText.substring(0, 100)}`);
+      if (checkinRes.ok) {
+        checkinData = { success: true, message: "签到请求成功（非JSON响应）" };
+      } else {
+        throw new Error(`签到请求失败 HTTP ${checkinRes.status}`);
+      }
     }
 
     if (!checkinRes.ok) {
@@ -193,11 +222,7 @@ async function checkinSingleSite(site, sharedLogs = null) {
     finalMsg += ` | 余额: ${balanceAfter ?? "未知"}`;
 
     log(finalMsg);
-    return {
-      name: site.name || site.url,
-      success: checkinSuccess,
-      message: finalMsg,
-    };
+    return { name: site.name || site.url, success: checkinSuccess, message: finalMsg };
   } catch (error) {
     log(`❌ ${error.message}`);
     return { name: site.name || site.url, success: false, message: error.message };
@@ -218,7 +243,7 @@ function buildHeaders(auth, ua) {
   return headers;
 }
 
-// 发送带认证的 GET 请求，自动解析 JSON
+// 发送带认证的 GET 请求
 async function authenticatedFetch(url, auth, ua) {
   const res = await fetch(url, {
     headers: buildHeaders(auth, ua),
@@ -378,7 +403,7 @@ function maskEmail(email) {
   return local[0] + "*".repeat(local.length - 2) + local[local.length - 1] + "@" + domain;
 }
 
-// ========== HTML 模板（不变） ==========
+// ========== HTML 模板 ==========
 function getHtmlTemplate() {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
