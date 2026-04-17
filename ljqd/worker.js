@@ -20,7 +20,6 @@ export default {
       return handleApiRequest(request, env, url.pathname);
     }
 
-    // 直接通过密码路径触发签到（用于无面板调试）
     if (env.PANEL_PASSWORD && url.pathname === `/${env.PANEL_PASSWORD}`) {
       const result = await runAllCheckins(env);
       return new Response(result.summary, {
@@ -78,7 +77,6 @@ async function checkinSingleSite(site, sharedLogs = null) {
   const baseUrl = site.url.replace(/\/$/, "");
   const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  // ===== 支持自定义路径 =====
   const paths = {
     login: site.paths?.login || "/api/user/login",
     checkin: site.paths?.checkin || "/api/user/checkin",
@@ -111,13 +109,13 @@ async function checkinSingleSite(site, sharedLogs = null) {
     const setCookie = loginRes.headers.get("set-cookie");
     if (setCookie) auth.cookie = setCookie;
 
-    // 读取登录响应
+    // 安全读取响应体：先获取文本，再尝试解析 JSON
+    const loginText = await loginRes.text();
     let loginData;
     try {
-      loginData = await loginRes.json();
+      loginData = JSON.parse(loginText);
     } catch {
-      const text = await loginRes.text();
-      throw new Error(`登录响应非 JSON: ${text.substring(0, 100)}`);
+      throw new Error(`登录响应非 JSON: ${loginText.substring(0, 100)}`);
     }
 
     if (!loginRes.ok) {
@@ -125,7 +123,6 @@ async function checkinSingleSite(site, sharedLogs = null) {
       throw new Error(`登录失败: ${msg}`);
     }
 
-    // 提取 Token（兼容不同字段名）
     auth.token = loginData.data?.token || loginData.token || loginData.access_token || loginData.api_key || "";
     if (auth.token) {
       log(`✅ 登录成功，获取到 Token`);
@@ -150,12 +147,13 @@ async function checkinSingleSite(site, sharedLogs = null) {
       headers: buildHeaders(auth, UA),
     });
 
+    // 安全读取签到响应体
+    const checkinText = await checkinRes.text();
     let checkinData;
     try {
-      checkinData = await checkinRes.json();
+      checkinData = JSON.parse(checkinText);
     } catch {
-      const text = await checkinRes.text();
-      throw new Error(`签到响应非 JSON: ${text.substring(0, 100)}`);
+      throw new Error(`签到响应非 JSON: ${checkinText.substring(0, 100)}`);
     }
 
     if (!checkinRes.ok) {
@@ -206,7 +204,7 @@ async function checkinSingleSite(site, sharedLogs = null) {
   }
 }
 
-// 辅助函数：构建请求头（优先 Token，无则 Cookie）
+// 构建请求头（优先 Token，无则 Cookie）
 function buildHeaders(auth, ua) {
   const headers = {
     "User-Agent": ua,
@@ -220,7 +218,7 @@ function buildHeaders(auth, ua) {
   return headers;
 }
 
-// 辅助函数：发送带认证的 GET 请求
+// 发送带认证的 GET 请求，自动解析 JSON
 async function authenticatedFetch(url, auth, ua) {
   const res = await fetch(url, {
     headers: buildHeaders(auth, ua),
@@ -229,7 +227,12 @@ async function authenticatedFetch(url, auth, ua) {
     const text = await res.text();
     throw new Error(`请求失败 ${res.status}: ${text.substring(0, 100)}`);
   }
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`响应非 JSON: ${text.substring(0, 100)}`);
+  }
 }
 
 function getValueByPath(obj, path) {
@@ -256,7 +259,6 @@ async function sendTelegram(env, message) {
   if (token) {
     apiUrl = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&parse_mode=HTML&text=${encoded}`;
   } else {
-    // 备用代理
     apiUrl = `https://api.tg.090227.xyz/sendMessage?chat_id=${chatId}&parse_mode=HTML&text=${encoded}`;
   }
 
@@ -376,7 +378,7 @@ function maskEmail(email) {
   return local[0] + "*".repeat(local.length - 2) + local[local.length - 1] + "@" + domain;
 }
 
-// ========== HTML 模板 ==========
+// ========== HTML 模板（不变） ==========
 function getHtmlTemplate() {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
