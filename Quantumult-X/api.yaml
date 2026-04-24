@@ -24,3 +24,4 @@ payload:
   - DOMAIN-SUFFIX,githubusercontent.com
   - DOMAIN-SUFFIX,github.io
   - DOMAIN-SUFFIX,collector.github.com
+  - DOMAIN-SUFFIX,api.github.com
