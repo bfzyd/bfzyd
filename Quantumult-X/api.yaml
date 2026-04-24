@@ -19,3 +19,8 @@ payload:
   - DOMAIN-SUFFIX,ark.cn-beijing.volces.com
   - DOMAIN-SUFFIX,openrouter.ai
   - DOMAIN-SUFFIX,t.tavo.cc
+  - DOMAIN-KEYWORD,github
+  - DOMAIN-SUFFIX,github.com
+  - DOMAIN-SUFFIX,githubusercontent.com
+  - DOMAIN-SUFFIX,github.io
+  - DOMAIN-SUFFIX,collector.github.com
