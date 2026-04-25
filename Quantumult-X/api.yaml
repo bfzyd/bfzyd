@@ -25,3 +25,4 @@ payload:
   - DOMAIN-SUFFIX,github.io
   - DOMAIN-SUFFIX,collector.github.com
   - DOMAIN-SUFFIX,api.github.com
+  - DOMAIN-SUFFIX,telegraph.aa11778378.workers.dev
