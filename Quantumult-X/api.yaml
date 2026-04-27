@@ -26,3 +26,4 @@ payload:
   - DOMAIN-SUFFIX,collector.github.com
   - DOMAIN-SUFFIX,api.github.com
   - DOMAIN-SUFFIX,telegraph.aa11778378.workers.dev
+  - DOMAIN-SUFFIX,image.pressindo.eu.org
