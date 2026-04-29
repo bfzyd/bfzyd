@@ -1,7 +1,6 @@
 # > 各种api连接接口固定台湾节点
 payload:
   - DOMAIN-SUFFIX,wishub-x6.ctyun.cn
-  - DOMAIN-SUFFIX,api.deepseek.com
   - DOMAIN-SUFFIX,liangjiewis.com
   - DOMAIN-SUFFIX,integrate.api.nvidia.com
   - DOMAIN-SUFFIX,openai.good.hidns.vip
